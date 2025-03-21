@@ -23,7 +23,11 @@ const uploadOnCloudinary = async (localFilePath) => {
             // koi bhi format aye khud detect kr lega
         })
         // file has been uploaded successfully
-        console.log('File uploaded successfully on cloudinary !', response.url);
+        // console.log('File uploaded successfully on cloudinary !', response);
+
+
+        // now file has been uploaded on cloudinary so we unlink the file from our server
+        fs.unlinkSync(localFilePath)
 
         return response;
     } catch (error){

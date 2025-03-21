@@ -7,7 +7,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 const registerUser = asyncHandler(async (req, res, next) => {
   const { fullname, email, username, password } = req.body;
 
-  console.log(username);
+  // console.log(req.body);
 
 //   ek bhi empty to return true and error throw
   if (
@@ -17,7 +17,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
   }
 
 //   check user exist or not
-  const existingUser = User.find({
+  const existingUser = await User.findOne({
     $or : [{ username }, { email }]
   })
 
@@ -27,7 +27,15 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
 
   const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverimageLocalPath = req.files?.coverimage[0]?.path;
+  // const coverimageLocalPath = req.files?.coverimage[0]?.path;   ye error de rha tha cant read property of undefined
+
+  let coverimageLocalPath;
+  // now check if coverimage is present or not
+  // avatar is required to use dusri tarah se check kra hai 
+  if( req.files && Array.isArray(req.files.coverimage) && req.files.coverimage.length > 0){
+    coverimageLocalPath = req.files.coverimage[0].path;
+  }
+
 
   if( ! avatarLocalPath){
     throw new ApiError(400, "Avatar is required");
@@ -52,7 +60,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
     })
 
     // check ki user bna hai ya nhi
-    const createdUser = await user.findById(user._id).select("-password -refreshToken");
+    const createdUser = await User.findById(user._id).select("-password -refreshToken");
     // password and refreshToken ko hide krne k liye
 
     if( ! createdUser){
