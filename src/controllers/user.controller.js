@@ -46,8 +46,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(409, "User with email or username already exists");
   }
 
-  console.log("req.files:", req.files);
-  console.log("kaaju");
+  
   const avatarLocalPath = req.files?.avatar[0]?.path;
 
   // console.log("Avatar Path:", avatarLocalPath);
@@ -210,34 +209,175 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET
     );
-  
+
     const user = await User.findById(decodedToken?._id);
-  
+
     if (!user) {
       throw new ApiError(401, "Invalid refresh token ");
     }
-  
+
     if (incomingRefreshToken !== user?.refreshToken) {
       throw new ApiError(401, "Refresh token is expired or used ");
     }
-  
+
     const options = {
       httpOnly: true,
       secure: true,
     };
-  
-    const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(
-      user._id
-    );
-  
+
+    const { accessToken, newRefreshToken } =
+      await generateAccessAndRefreshTokens(user._id);
+
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
       .cookie("refreshToken", newRefreshToken, options)
-      .json(new ApiResponse(200, { accessToken, newRefreshToken } , "Access token refreshed "));
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, newRefreshToken },
+          "Access token refreshed "
+        )
+      );
   } catch (error) {
-    throw new ApiError(401 , error?.message || "Invalid refresh token ")
+    throw new ApiError(401, error?.message || "Invalid refresh token ");
   }
 });
 
-export { registerUser, loginUser, logOutUser , refreshAccessToken };
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  // ye confirm password field rakhne ke liye
+
+  // const { oldPassword , newPassword , confirmPassword } = req.body;
+
+  // if( !oldPassword || !newPassword || !confirmPassword ){
+  //   throw new ApiError(400 , "All fields are required ")
+  // }
+
+  // if( newPassword !== confirmPassword ){
+  //   throw new ApiError(400 , "New password and confirm password do not match ")
+  // }
+
+  const { oldPassword, newPassword } = req.body;
+
+  // req.user mai user object aya hua hai ( middleware se )
+  const user = await User.findById(req.user?._id);
+
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+  // isPasswordCorrect is made inside user model
+
+  if (!isPasswordCorrect) {
+    throw new ApiError(401, "Invalid old password");
+  }
+
+  user.password = newPassword;
+  
+  await user.save({ validateBeforeSave: false });
+  // save is called to save the properties and call the pre save hook
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully "));
+});
+
+const getCurrnetUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        req.user,
+        "Current user details fetched successfully "
+      )
+    );
+});
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { fullname, email } = req.body;
+
+  if (!fullname || !email) {
+    throw new ApiError(400, "Fullname and email are required ");
+  }
+
+  const user = User.findByIdAndUpdate(req.user?._id ,
+    {
+      $set: {
+        fullname,
+        email,
+      },
+    }, 
+    { new: true }
+    // isse updated value milegi
+  ).select("-password -refreshToken");
+
+  return res.status(200).json(new ApiResponse(200, user, "Account details updated successfully "));
+});
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.file?.path;
+  // req.file kyoki single file chiye 
+  if( !avatarLocalPath ){
+    throw new ApiError(400 , "Avatar is missing ");
+  }
+
+  const avatar = await uploadOnCloudinary(avatarLocalPath)
+  // uploadOnCloudinary ye function hai jo cloudinary mai file upload karega aur url return karega
+
+  if( !avatar.url ){
+    throw new ApiError(400 , "Error while uploading on avatar");
+  }
+
+  // updating avatar in DB
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set : {
+        avatar : avatar.url ,
+      }
+    },
+    {new: true}
+  )
+  .select("-password -refreshToken")
+
+  return res.status(200).json(new ApiResponse(200, {}, "Avatar updated successfully "));
+});
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+  const coverLocalPath = req.file?.path;
+  // req.file kyoki single file chiye 
+  if( !coverLocalPath ){
+    throw new ApiError(400 , "cover Image is missing ");
+  }
+
+  const coverimage = await uploadOnCloudinary(coverLocalPath)
+  // uploadOnCloudinary ye function hai jo cloudinary mai file upload karega aur url return karega
+
+  if( !coverimage.url ){
+    throw new ApiError(400 , "Error while uploading on coverimage");
+  }
+
+  // updating avatar in DB
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set : {
+        coverimage : coverimage.url ,
+      }
+    },
+    {new: true}
+  )
+  .select("-password -refreshToken")
+
+  return res.status(200).json(new ApiResponse(200, user, "Cover image updated successfully "));
+});
+
+export {
+  registerUser,
+  loginUser,
+  logOutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrnetUser,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage
+};

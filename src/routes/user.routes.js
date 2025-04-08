@@ -22,7 +22,6 @@ router.route("/login").post(loginUser)
 //  verifyJWT is a middleware 
 router.route("/logout").post(verifyJWT ,   logOutUser)
 
-
 router.route("/refresh-token").post(refreshAccessToken)
 
 
