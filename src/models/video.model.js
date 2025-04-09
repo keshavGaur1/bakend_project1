@@ -23,7 +23,7 @@ const VideoSchema = new Schema(
         required: true,
       },
 
-    //   ye bhi cloudnary dega
+    //   ye bhi  cloudnary dega
       duration : {
         type: Number ,
         required: true,
