@@ -171,10 +171,16 @@ const logOutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined,
+      $unset: {
+        refreshToken: 1, // 1 is used to remove the field from DB
       },
     },
+    // 2nd approach to remove refresh token from DB
+    // {
+    //   $set: {
+    //     refreshToken: undefined,
+    //   },
+    // },
 
     // isse nayi value hi milegi ( returned response mai )
     {
@@ -451,7 +457,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(200, channel[0], "Channel profile fetched successfully ")
     );
-} );
+});
 
 const getWatchHistory = asyncHandler(async (req, res) => {
   const user = await User.aggregate([
@@ -503,10 +509,17 @@ const getWatchHistory = asyncHandler(async (req, res) => {
         ],
       },
     },
-
   ]);
 
-  return res.status(200).json(new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully "));
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "Watch history fetched successfully "
+      )
+    );
 });
 
 export {
@@ -522,3 +535,5 @@ export {
   getUserChannelProfile,
   getWatchHistory,
 };
+
+
